@@ -4,9 +4,9 @@ import requests
 from flask import Flask, request, Response, jsonify
 from flask_cors import CORS
 
+# Top of api.py
 app = Flask(__name__)
-# Allow your PWA to talk to this API
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}}) # Allow everything for now to fix the bug
 
 @app.route('/api/download')
 def media_engine():
@@ -59,3 +59,4 @@ if __name__ == "__main__":
     # Standard Flask start for local testing
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
+
