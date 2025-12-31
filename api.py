@@ -1,32 +1,35 @@
 import os
 import subprocess
-from flask import Flask, request, Response, jsonify
+from flask import Flask, request, Response
 from flask_cors import CORS
 
 app = Flask(__name__)
-
-# This configuration allows all origins, all methods (GET, POST, etc.), 
-# and all headers. It's the most permissive setting possible.
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 @app.route('/')
-def health_check():
-    return "Void API: Online and CORS-Open", 200
+def health():
+    return "Void API: Online", 200
 
 @app.route('/api/download')
 def download():
-    source_url = request.args.get('url')
-    file_type = request.args.get('type', 'video')
-    title = request.args.get('title', 'Media_File').replace(" ", "_")
+    url = request.args.get('url')
+    title = request.args.get('title', 'Void_Media').replace(" ", "_")
 
-    if not source_url:
-        return "Error: No URL provided", 400
+    if not url:
+        return "No URL provided", 400
 
-    # FFmpeg Command
+    # These headers are the 'Secret Sauce' to bypass blocks
+    # We pretend the request is coming from the video player itself
+    headers = (
+        "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\n"
+        "Referer: https://vidsrc.me/\r\n"
+        "Origin: https://vidsrc.me\r\n"
+    )
+
     ffmpeg_cmd = [
         'ffmpeg',
-        '-headers', 'Referer: https://vidsrc.me/\r\nUser-Agent: Mozilla/5.0\r\n',
-        '-i', source_url,
+        '-headers', headers,
+        '-i', url,
         '-c', 'copy',
         '-bsf:a', 'aac_adtstoasc',
         '-f', 'mp4',
@@ -35,18 +38,16 @@ def download():
     ]
 
     try:
+        # We capture stderr to see exactly WHY it fails in the Render logs
         process = subprocess.Popen(ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        
         return Response(
             process.stdout,
             mimetype='video/mp4',
-            headers={
-                "Content-Disposition": f"attachment; filename={title}.mp4",
-                "Access-Control-Allow-Origin": "*" # Extra security layer for direct file access
-            }
+            headers={"Content-Disposition": f"attachment; filename={title}.mp4"}
         )
     except Exception as e:
         return str(e), 500
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=10000)
