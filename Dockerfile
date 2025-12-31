@@ -1,21 +1,9 @@
-# Use Python image
 FROM python:3.10-slim
-
-# Install FFmpeg and system dependencies
-RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
-
-# Set working directory
+RUN apt-get update && apt-get install -y ffmpeg gcc && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-
-# Copy requirements and install
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy the rest of the app
 COPY . .
 
-# Start the API
-CMD ["python", "api.py"]
+# api:app means "look in api.py for the object named app"
+CMD ["gunicorn", "--bind", "0.0.0.0:10000", "api:app", "--timeout", "600"]
